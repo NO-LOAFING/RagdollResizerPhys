@@ -424,6 +424,7 @@ if CLIENT then
 	function ENT:BuildBonePositions(bonecount)
 
 		if !self or self == NULL then return end
+		self.BuildBonePositions_HasRun = true //Newly connected players will add this callback, but then wipe it; this tells the think func that it actually went through
 		if !self.PhysBones then return end
 
 		//This function is expensive, so make sure we aren't running it more often than we need to
@@ -718,9 +719,10 @@ if CLIENT then
 		//any changes made to clientside values by server activity like net messages are part of the demo recording, not done by serverside lua. This has a lot of bad implications
 		//for addons not made with this behavior in mind, but here, it means that self.PhysBones wasn't recorded in the demo because it was set before recording began. We set it
 		//back to nil here while we're recording so that the server sends us a new one, which WILL be recorded in the demo.
-		if engine.IsRecordingDemo() and #self:GetCallbacks("BuildBonePositions") == 0 then
-			self:SetLOD(0)
-			self:AddCallback("BuildBonePositions", self.BuildBonePositions)
+		//
+		//Note 10/16/24: Newly connected players also do this, they run Initialize but then wipe the callback and LOD setting right after, so check them as well using self.BuildBonePositions_HasRun.
+		if (!self.BuildBonePositions_HasRun or engine.IsRecordingDemo()) and #self:GetCallbacks("BuildBonePositions") == 0 then
+			self:Initialize()
 			self.PhysBones = nil
 		end
 

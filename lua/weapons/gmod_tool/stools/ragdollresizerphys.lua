@@ -361,6 +361,13 @@ function TOOL:Think()
 						end
 					end
 
+					//Use the ragdoll sequence for angles (for models where the default anim isn't a reference pose, like hl2 zombies)
+					local sequence = self.GhostRagdoll:SelectWeightedSequence(ACT_DIERAGDOLL)
+					if sequence != -1 then
+						self.GhostRagdoll:SetSequence(sequence)
+						self.GhostRagdoll:ResetSequence(sequence)
+					end
+
 					//there is no reason for the ghost ragdoll to not render
 					self.GhostRagdoll:SetRenderBoundsWS(Vector(-99999999,-99999999,-99999999), Vector(99999999,99999999,99999999))
 
@@ -371,7 +378,7 @@ function TOOL:Think()
 					self.GhostRagdoll.LastBuildBonePositionsTime = 0
 					self.GhostRagdoll.SavedBoneMatrices = {}
 
-					self.GhostRagdoll:AddCallback( "BuildBonePositions", function()
+					self.GhostRagdoll:AddCallback("BuildBonePositions", function()
 
 						local RagdollResizerScales = self:GetWeapon().RagdollResizerScales
 						local pose = self:GetClientNumber("pose")
@@ -453,17 +460,23 @@ function TOOL:Think()
 								end
 							end
 
-							//Now use the ragdoll sequence for angles
+							//For reference, this was where and how we set the ragdoll sequence prior to the 5/2/25 update, but running SetModel twice
+							//started causing a crash on 64-bit only for some reason, so we had to change it to the current method above, where we set the
+							//sequence earlier. This returns different results in self.BoneOffsets and self.PhysBoneOffsets, but doesn't visually appear to 
+							//be *wrong* at all? Actually it returns *better* results for some models like hl2 zombies than the actual resized ragdoll?
+							//TODO: Revisit this, right now we just have to stop the crash.
+							--[[//Now use the ragdoll sequence for angles
 							local sequence = self:SelectWeightedSequence(ACT_DIERAGDOLL)
 							if sequence != -1 then
 								local mdl = self:GetModel()	  //just calling SetModel(self:GetModel()) here doesn't prevent animation blending unlike when we do the same
 								self:SetModel("models/error.mdl") //thing in prop_resizedragdoll_physparent; instead we have to switch to another model and then switch back
 								self:SetModel(mdl)
+								//self:SetModel(self:GetModel()) //prevents crash, but also runs into the issue described above, argh
 								self:SetSequence(sequence)
 								self:ResetSequence(sequence)
 
 								self:SetupBones() //give the bones a nudge, otherwise we won't get the correct angles below
-							end
+							end]]
 
 							self.PhysBoneAngles = {}
 							for i = 0, self:GetBoneCount() - 1 do

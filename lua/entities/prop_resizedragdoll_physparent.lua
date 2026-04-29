@@ -419,12 +419,26 @@ function ENT:Initialize()
 
 end
 
+//Client "full updates" happen upon new player connection, lag spikes, running the 'cl_fullupdate' concommand, and demo recording (all but the last 
+//are exclusive to multiplayer) - this recreates the entity, but doesn't run Initialize again, which breaks our BuildBonePositions callback, so fix 
+//this by running Initialize again manually. For demo support, we also need to request the server to send us a new info table, so that the demo can 
+//record this one.
+function ENT:OnRemove(fullupdate)
+	if fullupdate then
+		timer.Simple(0, function()
+			if IsValid(self) then 
+				self:Initialize()
+				self.PhysBones = nil
+			end
+		end)
+	end
+end
+
 if CLIENT then
 
 	function ENT:BuildBonePositions(bonecount)
 
 		if !self or self == NULL then return end
-		self.BuildBonePositions_HasRun = true //Newly connected players will add this callback, but then wipe it; this tells the think func that it actually went through
 		if !self.PhysBones then return end
 
 		//This function is expensive, so make sure we aren't running it more often than we need to
@@ -706,25 +720,6 @@ if CLIENT then
 
 
 	function ENT:Think()
-
-		//Bandaid fix for demo recording and playback - oh boy, this one's a doozy. This only applies to resized ragdolls spawned BEFORE recording a demo - they don't seem to have
-		//any problems if spawned during a demo instead.
-		//
-		//This issue is two-pronged - first off, when demo recording begins, some clientside information is lost (why?). The prop_resizedragdoll_physparent loses its LOD and callback
-		//set in Initialize, so we need to set both of those again, and all the prop_resizedragdoll_physobjs lose their clientside physics objects, so we need to recreate them in 
-		//that entity's Think function.
-		//These, or at least the callback, don't seem to be lost until a few frames into recording, so we have to manually check for them instead of engine.IsRecordingDemo() alone.
-		//
-		//Second, when the demo is played back, any clientside values set on the entity BEFORE the recording was started don't seem to exist, and serverside lua doesn't run at all - 
-		//any changes made to clientside values by server activity like net messages are part of the demo recording, not done by serverside lua. This has a lot of bad implications
-		//for addons not made with this behavior in mind, but here, it means that self.PhysBones wasn't recorded in the demo because it was set before recording began. We set it
-		//back to nil here while we're recording so that the server sends us a new one, which WILL be recorded in the demo.
-		//
-		//Note 10/16/24: Newly connected players also do this, they run Initialize but then wipe the callback and LOD setting right after, so check them as well using self.BuildBonePositions_HasRun.
-		if (!self.BuildBonePositions_HasRun or engine.IsRecordingDemo()) and #self:GetCallbacks("BuildBonePositions") == 0 then
-			self:Initialize()
-			self.PhysBones = nil
-		end
 
 		//If we don't have a physbones table then request it from the server
 		if !self.PhysBones then

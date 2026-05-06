@@ -300,7 +300,7 @@ function ENT:Initialize()
 
 			//self.ResizedRagdollConstraints = {}
 			self.ConstraintSystem = ents.Create("phys_constraintsystem")
-			self.ConstraintSystem:SetKeyValue( "additionaliterations", GetConVarNumber( "gmod_physiterations" ) )
+			//self.ConstraintSystem:SetKeyValue("additionaliterations", GetConVarNumber("gmod_physiterations")) //disabled because this appears to make ragdoll range of motion more strict (see lamarr.mdl legs with and without this setting); this matches how default ragdolls do this internally (https://github.com/ValveSoftware/source-sdk-2013/blob/master/src/game/shared/ragdoll_shared.cpp#L275-L277, which sets default of 0 https://github.com/ValveSoftware/source-sdk-2013/blob/master/src/public/vphysics/constraints.h#L18-L30)
 			self.ConstraintSystem:SetName("constraintsystem_" .. self:EntIndex())
 			self.ConstraintSystem:Spawn()
 			self.ConstraintSystem:Activate()
@@ -342,6 +342,20 @@ function ENT:Initialize()
 				Constraint:SetKeyValue( "xfriction", avgfriction )
 				Constraint:SetKeyValue( "yfriction", avgfriction )
 				Constraint:SetKeyValue( "zfriction", avgfriction )]]
+
+				//5/5/26: Alternate method, which supports friction values and prevents the recent update's high scale constraint jitter
+				//bug from happening as early (with above method, gman_high.mdl jitters at scale ~15 or higher, while with below method, 
+				//it jitters at scale ~35 or higher). Unfortunately, while this works perfectly on all HL2 ragdolls, it causes a few
+				//random joints on TF2 ragdolls to completely freak out (i.e. heavy's left shoulder, elbow, hip and knee, no others),
+				//with no discernible pattern or way to fix it, aside from not setting the constraint to this angle. Dead end, too bad!
+				--[[Constraint:SetAngles(childphys:GetAngles())
+				//MsgN("constraint between ", self:GetBoneName(self:TranslatePhysBoneToBone(constrainttab.parent)), " and ", self:GetBoneName(self:TranslatePhysBoneToBone(constrainttab.child)))
+				//MsgN("angle is ", childphys:GetAngles())
+				for _, v in pairs ({"xmin", "ymin", "zmin", "xmax", "ymax", "zmax", "xfriction", "yfriction", "zfriction"}) do
+					Constraint:SetKeyValue(v, constrainttab[v])
+				end
+				//PrintTable(constrainttab)
+				//MsgN("")]]
 
 				Constraint:SetKeyValue( "spawnflags", 1 )  //nocollide
 				Constraint:SetKeyValue( "constraintsystem", "constraintsystem_" .. self:EntIndex() ) 

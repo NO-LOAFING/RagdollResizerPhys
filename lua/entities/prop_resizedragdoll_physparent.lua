@@ -130,6 +130,10 @@ function ENT:Initialize()
 				for _, tab2 in pairs (tab.Value) do
 					if tab2.Key == "collisionpair" then
 						local pair = string.Explode( ",", tab2.Value, false)
+						for k, v in pairs (pair) do
+							//these need to be numbers, not strings, otherwise comparing them to physobj ids with == below will always be false
+							pair[k] = tonumber(v)
+						end
 						table.insert(self.ModelInfo.CollisionPairs, pair)
 					elseif tab2.Key == "selfcollisions" then
 						self.ModelInfo.SelfCollisions = tab2.Value

@@ -110,7 +110,7 @@ function ENT:Initialize()
 					tabprocessed[tab2.Key] = tab2.Value
 				end
 
-				self.ModelInfo.Solids[tabprocessed["index"]] = tabprocessed
+				self.ModelInfo.Solids[tabprocessed.index] = tabprocessed
 			end
 
 			if tab.Key == "ragdollconstraint" then
@@ -121,7 +121,7 @@ function ENT:Initialize()
 					tabprocessed[tab2.Key] = tab2.Value
 				end
 
-				self.ModelInfo.Constraints[tabprocessed["child"]] = tabprocessed
+				self.ModelInfo.Constraints[tabprocessed.child] = tabprocessed
 			end
 
 			if tab.Key == "collisionrules" then
@@ -129,7 +129,7 @@ function ENT:Initialize()
 
 				for _, tab2 in pairs (tab.Value) do
 					if tab2.Key == "collisionpair" then
-						local pair = string.Explode( ",", tab2.Value, false)
+						local pair = string.Explode(",", tab2.Value, false)
 						for k, v in pairs (pair) do
 							//these need to be numbers, not strings, otherwise comparing them to physobj ids with == below will always be false
 							pair[k] = tonumber(v)
@@ -147,32 +147,28 @@ function ENT:Initialize()
 		//self:TranslateBoneToPhysBone() just doesn't work at all on some models (TODO: which model? need to write this down for further testing!), so we can't rely on it - make a table to use instead
 		self.PhysObjPhysBoneIDs = {}
 		for i = 0, table.Count(self.ModelInfo.Solids) - 1 do
-			self.PhysObjPhysBoneIDs[string.lower(self.ModelInfo.Solids[i]["name"])] = i
+			self.PhysObjPhysBoneIDs[string.lower(self.ModelInfo.Solids[i].name)] = i
 		end
 
 		//Generate physbone offsets - use the modelinfo table to determine which physobjs are parented to which, and then get their offset from their parent.
 		//We need this because we need to multiply the position offset by the parent physbone's scale.
 
 		for i = 0, table.Count(self.ModelInfo.Solids) - 1 do
-
-			//MsgN("test: ", i , " translate bone to physbone ", self:TranslateBoneToPhysBone(i))
-
-			if self.ModelInfo.Solids[i]["parent"] then
+			if self.ModelInfo.Solids[i].parent then
 				//Physobj has a parent physobj, so get its offset from that
-				local bonepos = self:GetBoneMatrix( self:TranslatePhysBoneToBone(i) ):GetTranslation()
-				local parboneid = self:LookupBone(self.ModelInfo.Solids[i]["parent"])
-				local parbonepos, parboneang = self:GetBoneMatrix( parboneid ):GetTranslation(), self:GetBoneMatrix( parboneid ):GetAngles()
+				local bonepos = self:GetBoneMatrix(self:TranslatePhysBoneToBone(i)):GetTranslation()
+				local parboneid = self:LookupBone(self.ModelInfo.Solids[i].parent)
+				local parbonepos, parboneang = self:GetBoneMatrix(parboneid):GetTranslation(), self:GetBoneMatrix(parboneid):GetAngles()
 
-				local offsetpos, _ = WorldToLocal(bonepos, Angle(0,0,0), parbonepos, parboneang)
-				self.ModelInfo.Solids[i]["offsetpos"] = offsetpos * self.PhysObjScales[ self.PhysObjPhysBoneIDs[string.lower(self.ModelInfo.Solids[i]["parent"])] ]
+				local offsetpos, _ = WorldToLocal(bonepos, Angle(), parbonepos, parboneang)
+				self.ModelInfo.Solids[i].offsetpos = offsetpos * self.PhysObjScales[ self.PhysObjPhysBoneIDs[string.lower(self.ModelInfo.Solids[i].parent)] ]
 			else
 				//Physobj doesn't have a parent physobj, so get its offset from the model origin
-				local bonepos = self:GetBoneMatrix( self:TranslatePhysBoneToBone(i) ):GetTranslation()
+				local bonepos = self:GetBoneMatrix(self:TranslatePhysBoneToBone(i)):GetTranslation()
 
-				local offsetpos, _ = WorldToLocal(bonepos, Angle(0,0,0), self:GetPos(), self:GetAngles())
-				self.ModelInfo.Solids[i]["offsetpos"] = offsetpos
+				local offsetpos, _ = WorldToLocal(bonepos, Angle(), self:GetPos(), self:GetAngles())
+				self.ModelInfo.Solids[i].offsetpos = offsetpos
 			end
-
 		end
 
 		//Now use the ragdoll sequence for physobj and constraint angles
@@ -189,29 +185,28 @@ function ENT:Initialize()
 		self.PhysObjEnts = {}
 		local PhysObjErrors = {}
 		for i = 0, table.Count(self.ModelInfo.Solids) - 1 do
-
-			local matr = self:GetBoneMatrix( self:TranslatePhysBoneToBone(i) )
+			local matr = self:GetBoneMatrix(self:TranslatePhysBoneToBone(i))
 			if matr then
 				local physent = ents.Create("prop_resizedragdoll_physobj")
 
-				if self.ModelInfo.Solids[i]["parent"] and self.ModelInfo.Solids[i]["parent"] != self.ModelInfo.Solids[i]["name"] then
+				if self.ModelInfo.Solids[i].parent and self.ModelInfo.Solids[i].parent != self.ModelInfo.Solids[i].name then
 					//Physobj has a parent physobj, so use its offset from that (TODO: What if a model is set up so that the parent physobj is created LATER than its
 					//child for some reason? That would break everything since we wouldn't be able to get the parent's position!)
-					local parphysobjid = self.PhysObjPhysBoneIDs[string.lower(self.ModelInfo.Solids[i]["parent"])]
+					local parphysobjid = self.PhysObjPhysBoneIDs[string.lower(self.ModelInfo.Solids[i].parent)]
 					local parphysent = self.PhysObjEnts[parphysobjid]
 					if !IsValid(parphysent) then
-						PhysObjErrors[i] = i .. ": " .. self.ModelInfo.Solids[i]["name"] .. " couldn't be created because its parent (" .. self.ModelInfo.Solids[i]["parent"]  .. ") doesn't exist/failed to generate."
+						PhysObjErrors[i] = i .. ": " .. self.ModelInfo.Solids[i].name .. " couldn't be created because its parent (" .. self.ModelInfo.Solids[i].parent  .. ") doesn't exist/failed to generate."
 						continue
 					end
-					local ourpos, _ = LocalToWorld(self.ModelInfo.Solids[i]["offsetpos"], Angle(0,0,0), parphysent:GetPos(), parphysent:GetAngles())
+					local ourpos, _ = LocalToWorld(self.ModelInfo.Solids[i].offsetpos, Angle(), parphysent:GetPos(), parphysent:GetAngles())
 					physent:SetPos(ourpos)
 
 					//Store this stuff in the physent so it can use it itself
 					physent.PhysParent = parphysent
-					physent.PhysParentOffsetPos = self.ModelInfo.Solids[i]["offsetpos"]
+					physent.PhysParentOffsetPos = self.ModelInfo.Solids[i].offsetpos
 				else
 					//Physobj doesn't have a parent physobj, so use its offset from the model origin
-					local ourpos, _ = LocalToWorld(self.ModelInfo.Solids[i]["offsetpos"], Angle(0,0,0), self:GetPos(), self:GetAngles())
+					local ourpos, _ = LocalToWorld(self.ModelInfo.Solids[i].offsetpos, Angle(), self:GetPos(), self:GetAngles())
 					physent:SetPos(ourpos)
 				end
 
@@ -228,7 +223,7 @@ function ENT:Initialize()
 				for convexnum, convextab in pairs (self.PhysObjMeshes[i]) do
 					scaledmesh[convexnum] = scaledmesh[convexnum] or {}
 					for _, v in pairs (convextab) do
-						table.insert(scaledmesh[convexnum], v * self.PhysObjScales[i] )
+						table.insert(scaledmesh[convexnum], v * self.PhysObjScales[i])
 					end
 				end
 				physent:PhysicsInitMultiConvex(scaledmesh)
@@ -251,16 +246,16 @@ function ENT:Initialize()
 				local physobj = physent:GetPhysicsObject()
 				if !physobj:IsValid() then
 					//the backup mesh idea doesn't work very well, presumably because the mesh's center of gravity isn't in the right place, so just remove the entity
-					PhysObjErrors[i] = i .. ": " .. self.ModelInfo.Solids[i]["name"] .. " failed to generate. This is usually because its collision mesh was too small or too thin for the engine to handle - you might have to increase its size a bit, or make the differences between the X, Y and Z scales less extreme."
+					PhysObjErrors[i] = i .. ": " .. self.ModelInfo.Solids[i].name .. " failed to generate. This is usually because its collision mesh was too small or too thin for the engine to handle - you might have to increase its size a bit, or make the differences between the X, Y and Z scales less extreme."
 					physent:Remove()
 					continue
 				end
 
-				physobj:SetMass( self.ModelInfo.Solids[i]["mass"] * self.PhysObjScales[i].x * self.PhysObjScales[i].y * self.PhysObjScales[i].z )
-				physobj:SetMaterial( self.ModelInfo.Solids[i]["surfaceprop"] or "" )				
-				physobj:SetDamping( self.ModelInfo.Solids[i]["damping"], self.ModelInfo.Solids[i]["rotdamping"] )
-				local inertia = self.ModelInfo.Solids[i]["inertia"]
-				if inertia > 0 then physobj:SetInertia( physobj:GetInertia() * Vector(inertia,inertia,inertia) ) end
+				physobj:SetMass(self.ModelInfo.Solids[i].mass * self.PhysObjScales[i].x * self.PhysObjScales[i].y * self.PhysObjScales[i].z)
+				physobj:SetMaterial(self.ModelInfo.Solids[i].surfaceprop or "")				
+				physobj:SetDamping(self.ModelInfo.Solids[i].damping, self.ModelInfo.Solids[i].rotdamping)
+				local inertia = self.ModelInfo.Solids[i].inertia
+				if inertia > 0 then physobj:SetInertia(physobj:GetInertia() * Vector(inertia,inertia,inertia)) end
 
 				physobj:Wake()
 
@@ -269,7 +264,6 @@ function ENT:Initialize()
 				self.PhysObjs[i] = physobj
 				self.PhysObjEnts[i] = physent
 			end
-
 		end
 		//Error handling for physobj creation
 		if self.ErrorRecipient and table.Count(PhysObjErrors) > 0 then
@@ -286,7 +280,7 @@ function ENT:Initialize()
 			MsgN("")
 
 			//Tell the client that spawned the ragdoll to show a notification on the HUD letting the player about the error and directing them to the console
-			net.Start( "ResizedRagdoll_FailedToGenerate_SendToCl" )
+			net.Start("ResizedRagdoll_FailedToGenerate_SendToCl")
 				net.WriteInt(table.Count(PhysObjErrors), 11)
 			net.Send(self.ErrorRecipient)
 
@@ -301,7 +295,6 @@ function ENT:Initialize()
 
 		//Apply ragdoll constraints
 		if self.ModelInfo.Constraints then
-
 			//self.ResizedRagdollConstraints = {}
 			self.ConstraintSystem = ents.Create("phys_constraintsystem")
 			//self.ConstraintSystem:SetKeyValue("additionaliterations", GetConVarNumber("gmod_physiterations")) //disabled because this appears to make ragdoll range of motion more strict (see lamarr.mdl legs with and without this setting); this matches how default ragdolls do this internally (https://github.com/ValveSoftware/source-sdk-2013/blob/master/src/game/shared/ragdoll_shared.cpp#L275-L277, which sets default of 0 https://github.com/ValveSoftware/source-sdk-2013/blob/master/src/public/vphysics/constraints.h#L18-L30)
@@ -309,43 +302,42 @@ function ENT:Initialize()
 			self.ConstraintSystem:Spawn()
 			self.ConstraintSystem:Activate()
 			self:DeleteOnRemove(self.ConstraintSystem)
+
 			SetPhysConstraintSystem(self.ConstraintSystem)
-
 			for i, constrainttab in pairs (self.ModelInfo.Constraints) do
-
-				local parentent = self.PhysObjEnts[ constrainttab["parent"] ]
-				local childent = self.PhysObjEnts[ constrainttab["child"] ]
-				local parentphys = self.PhysObjs[ constrainttab["parent"] ]
-				local childphys = self.PhysObjs[ constrainttab["child"] ]
+				local parentent = self.PhysObjEnts[constrainttab.parent]
+				local childent = self.PhysObjEnts[constrainttab.child]
+				local parentphys = self.PhysObjs[constrainttab.parent]
+				local childphys = self.PhysObjs[constrainttab.child]
 				if !IsValid(parentent) or !IsValid(childent) or !parentphys:IsValid() or !childphys:IsValid() then continue end
 	
 				local Constraint = ents.Create("phys_ragdollconstraint")
 				Constraint:SetPos(childphys:GetPos())
 				Constraint:SetAngles(parentphys:GetAngles())
 
-				local mins = Vector( constrainttab["xmin"], constrainttab["ymin"], constrainttab["zmin"] )
-				local maxs = Vector( constrainttab["xmax"], constrainttab["ymax"], constrainttab["zmax"] )
+				local mins = Vector(constrainttab.xmin, constrainttab.ymin, constrainttab.zmin)
+				local maxs = Vector(constrainttab.xmax, constrainttab.ymax, constrainttab.zmax)
 				local _, offsetang = WorldToLocal(childent:GetPos(), childent:GetAngles(), parentent:GetPos(), parentent:GetAngles())
 				mins:Rotate(offsetang)
 				maxs:Rotate(offsetang)
-				Constraint:SetKeyValue( "xmin", math.min(mins.x,maxs.x) )
-				Constraint:SetKeyValue( "xmax", math.max(mins.x,maxs.x) )
-				Constraint:SetKeyValue( "ymin", math.min(mins.y,maxs.y) )
-				Constraint:SetKeyValue( "ymax", math.max(mins.y,maxs.y) )
-				Constraint:SetKeyValue( "zmin", math.min(mins.z,maxs.z) )
-				Constraint:SetKeyValue( "zmax", math.max(mins.z,maxs.z) )
+				Constraint:SetKeyValue("xmin", math.min(mins.x,maxs.x))
+				Constraint:SetKeyValue("xmax", math.max(mins.x,maxs.x))
+				Constraint:SetKeyValue("ymin", math.min(mins.y,maxs.y))
+				Constraint:SetKeyValue("ymax", math.max(mins.y,maxs.y))
+				Constraint:SetKeyValue("zmin", math.min(mins.z,maxs.z))
+				Constraint:SetKeyValue("zmax", math.max(mins.z,maxs.z))
 
 				//TODO: Find a better way to handle friction; these values don't rotate well and averaging them isn't much better. 
 				//For now, I guess we'll just settle for ultra-floppy frictionless ragdolls.
-				--[[local friction = Vector( constrainttab["xfriction"], constrainttab["yfriction"], constrainttab["zfriction"] )
+				--[[local friction = Vector(constrainttab.xfriction, constrainttab.yfriction, constrainttab.zfriction)
 				friction:Rotate(offsetang)
-				Constraint:SetKeyValue( "xfriction", math.Clamp(friction.x, 0, friction.x) )
-				Constraint:SetKeyValue( "yfriction", math.Clamp(friction.y, 0, friction.y) )
-				Constraint:SetKeyValue( "zfriction", math.Clamp(friction.z, 0, friction.z) )]]
-				--[[local avgfriction = ( constrainttab["xfriction"] + constrainttab["yfriction"] + constrainttab["zfriction"] ) / 3
-				Constraint:SetKeyValue( "xfriction", avgfriction )
-				Constraint:SetKeyValue( "yfriction", avgfriction )
-				Constraint:SetKeyValue( "zfriction", avgfriction )]]
+				Constraint:SetKeyValue("xfriction", math.Clamp(friction.x, 0, friction.x))
+				Constraint:SetKeyValue("yfriction", math.Clamp(friction.y, 0, friction.y))
+				Constraint:SetKeyValue("zfriction", math.Clamp(friction.z, 0, friction.z))]]
+				--[[local avgfriction = (constrainttab.xfriction + constrainttab.yfriction + constrainttab.zfriction) / 3
+				Constraint:SetKeyValue("xfriction", avgfriction)
+				Constraint:SetKeyValue("yfriction", avgfriction)
+				Constraint:SetKeyValue("zfriction", avgfriction)]]
 
 				//5/5/26: Alternate method, which supports friction values and prevents the recent update's high scale constraint jitter
 				//bug from happening as early (with above method, gman_high.mdl jitters at scale ~15 or higher, while with below method, 
@@ -361,16 +353,14 @@ function ENT:Initialize()
 				//PrintTable(constrainttab)
 				//MsgN("")]]
 
-				Constraint:SetKeyValue( "spawnflags", 1 )  //nocollide
-				Constraint:SetKeyValue( "constraintsystem", "constraintsystem_" .. self:EntIndex() ) 
-				Constraint:SetPhysConstraintObjects( parentphys, childphys )
+				Constraint:SetKeyValue("spawnflags", 1)  //nocollide
+				Constraint:SetKeyValue("constraintsystem", "constraintsystem_" .. self:EntIndex()) 
+				Constraint:SetPhysConstraintObjects(parentphys, childphys)
 				Constraint:Spawn()
 				Constraint:Activate()
 				self:DeleteOnRemove(Constraint)
 				//self.ResizedRagdollConstraints[i] = Constraint
-
 			end
-
 			SetPhysConstraintSystem(NULL)
 		end
 
@@ -385,14 +375,14 @@ function ENT:Initialize()
 			end
 
 			local Constraint = ents.Create("logic_collision_pair")
-			Constraint:SetKeyValue( "startdisabled", 1 )
-			Constraint:SetPhysConstraintObjects( phys1, phys2 )
+			Constraint:SetKeyValue("startdisabled", 1)
+			Constraint:SetPhysConstraintObjects(phys1, phys2)
 			Constraint:Spawn()
 			Constraint:Activate()
 			self:DeleteOnRemove(Constraint)
-			Constraint:Input( "DisableCollisions", nil, nil, nil )
+			Constraint:Input("DisableCollisions", nil, nil, nil)
 
-			table.insert( RagdollCollisions, {["Phys1"] = phys1, ["Phys2"] = phys2} )
+			table.insert(RagdollCollisions, {Phys1 = phys1, Phys2 = phys2})
 		end
 
 		if self.ModelInfo.SelfCollisions and self.ModelInfo.SelfCollisions == 0 then
@@ -494,24 +484,24 @@ if CLIENT then
 			local boneoffsets = {}
 			for i = 0, bonecount - 1 do
 				local newentry = {
-					posoffset = Vector(0,0,0),
-					angoffset = Angle(0,0,0),
+					p = Vector(0,0,0),
+					a = Angle(0,0,0),
 				}
 				local parentboneid = self.csmodel:GetBoneParent(i)
 				if parentboneid and parentboneid != -1 then
 					local parentmatr = self.csmodel:GetBoneMatrix(parentboneid)
 					local ourmatr = self.csmodel:GetBoneMatrix(i)
 					if ourmatr == nil then return end
-					newentry["posoffset"], newentry["angoffset"] = WorldToLocal(ourmatr:GetTranslation(), ourmatr:GetAngles(), parentmatr:GetTranslation(), parentmatr:GetAngles())
+					newentry.p, newentry.a = WorldToLocal(ourmatr:GetTranslation(), ourmatr:GetAngles(), parentmatr:GetTranslation(), parentmatr:GetAngles())
 				elseif i == 0 then
 					local ourmatr = self.csmodel:GetBoneMatrix(i)
 					if ourmatr != nil then
-						newentry["posoffset"], newentry["angoffset"] = WorldToLocal(ourmatr:GetTranslation(), ourmatr:GetAngles(), self:GetPos(), self:GetAngles())
+						newentry.p, newentry.a = WorldToLocal(ourmatr:GetTranslation(), ourmatr:GetAngles(), self:GetPos(), self:GetAngles())
 					end
 				end
-				if !newentry["posoffset"] then
-					newentry["posoffset"] = Vector(0,0,0)
-					newentry["angoffset"] = Angle(0,0,0)
+				if !newentry.p then
+					newentry.p = Vector(0,0,0)
+					newentry.a = Angle(0,0,0)
 				end
 				table.insert(boneoffsets, i, newentry)
 			end
@@ -552,9 +542,9 @@ if CLIENT then
 				parentmatr:SetAngles(self:GetAngles())
 			end
 			if parentmatr then
-				parentmatr:Translate(self.BoneOffsets[i]["posoffset"])
+				parentmatr:Translate(self.BoneOffsets[i].p)
 				parentmatr:Translate(self:GetManipulateBonePosition(i))
-				parentmatr:Rotate(self.BoneOffsets[i]["angoffset"])
+				parentmatr:Rotate(self.BoneOffsets[i].a)
 				parentmatr:Rotate(self:GetManipulateBoneAngles(i))
 			end
 
@@ -572,7 +562,7 @@ if CLIENT then
 					matr:SetTranslation(self.PhysBones[i].entity:GetPos())
 				end
 				matr:SetAngles(self.PhysBones[i].entity:GetAngles())
-				matr:Scale( self.PhysBones[i].scalevec )
+				matr:Scale(self.PhysBones[i].scalevec)
 			else
 				//Follow our parent bone
 				if parentmatr then matr = parentmatr end
@@ -634,7 +624,7 @@ if SERVER then
 		if !IsValid(ent) then return end
 		if !ent.DoneGeneratingPhysObjs then return end
 
-		net.Start( "ResizedRagdoll_PhysBonesTable_SendToCl" )
+		net.Start("ResizedRagdoll_PhysBonesTable_SendToCl")
 			net.WriteEntity(ent)
 
 			net.WriteInt(table.Count(ent.PhysObjEnts), 11)
@@ -644,9 +634,9 @@ if SERVER then
 				net.WriteEntity(ent2)
 				net.WriteVector(ent.PhysObjScales[k])
 
-				local parentname = ent.ModelInfo.Solids[k]["parent"]
+				local parentname = ent.ModelInfo.Solids[k].parent
 				local parentid = nil
-				if parentname and parentname != ent.ModelInfo.Solids[k]["name"] then parentid = ent:LookupBone(parentname) end
+				if parentname and parentname != ent.ModelInfo.Solids[k].name then parentid = ent:LookupBone(parentname) end
 				net.WriteInt(parentid or -1, 11)
 				net.WriteInt(k, 11)
 			end
@@ -660,22 +650,22 @@ if CLIENT then
 	//If we received a physbones table from the server, then use it
 	net.Receive("ResizedRagdoll_PhysBonesTable_SendToCl", function()
 		local ent = net.ReadEntity()
-		if !IsValid(ent) then return end
-		if ent.PhysBones then return end
 
 		//Store the physbones table - this table has a different format than anything used serverside, for ease of use with the BuildBonePositions callback
 		local count = net.ReadInt(11)
 		local tab = {}
 		for i = 1, count do
 			local key = net.ReadInt(11)
-
 			tab[key] = {
-				["entity"] = net.ReadEntity(),
-				["scalevec"] = net.ReadVector(),
-				["parentid"] = net.ReadInt(11),
-				["physboneid"] = net.ReadInt(11),
+				entity = net.ReadEntity(),
+				scalevec = net.ReadVector(),
+				parentid = net.ReadInt(11),
+				physboneid = net.ReadInt(11),
 			}
 		end
+
+		if !IsValid(ent) then return end
+		if ent.PhysBones then return end
 		ent.PhysBones = tab
 
 		//Create clientside physobjs so that clientside traces can hit them (these are managed by the physobj entities)
@@ -709,7 +699,7 @@ if CLIENT then
 					phys2:EnableMotion(false)
 					phys2:Sleep() //the clientside physobj likes to break things unless it's asleep
 
-					tab.entity:SetRenderBounds( tab.entity:GetCollisionBounds() )
+					tab.entity:SetRenderBounds(tab.entity:GetCollisionBounds())
 				end
 
 				tab.entity.RagdollParent = ent
@@ -882,7 +872,7 @@ if SERVER then
 	function ENT:Think()
 
 		if !self.DoneGeneratingPhysObjs then return end
-		self:SetPos( self.PhysObjEnts[0]:GetPos() )
+		self:SetPos(self.PhysObjEnts[0]:GetPos())
 
 		if !self.RagdollBoundsFresh then self:GenerateRagdollBounds() end
 		self:SetCollisionBounds(self.RagdollBoundsMin, self.RagdollBoundsMax) //if we don't do this, the ragdoll stops rendering if its collision bounds end up entirely inside the world, like HL2 citizen heads are prone to doing https://steamcommunity.com/sharedfiles/filedetails/?id=904420753
@@ -921,7 +911,7 @@ if SERVER then
 		for k, physent in pairs (self.PhysObjEnts) do
 			local physobj = physent:GetPhysicsObject()
 			if physent.PhysParent then
-				local ourpos, _ = LocalToWorld(physent.PhysParentOffsetPos, Angle(0,0,0), physent.PhysParent:GetPos(), physent.PhysParent:GetAngles())
+				local ourpos, _ = LocalToWorld(physent.PhysParentOffsetPos, Angle(), physent.PhysParent:GetPos(), physent.PhysParent:GetAngles())
 				local vel = physobj:GetVelocity()
 
 				local mins, maxs = physobj:GetAABB()
@@ -946,17 +936,17 @@ end
 
 
 
-duplicator.RegisterEntityClass( "prop_resizedragdoll_physparent", function( ply, data )
+duplicator.RegisterEntityClass("prop_resizedragdoll_physparent", function( ply, data )
 	local ent = ents.Create("prop_resizedragdoll_physparent")
 
-	local OldBoneManip = data.BoneManip  //don't apply bone manips until after we've initialized the entity, otherwise it'll mess up the physbone offsets
+	local OldBoneManip = data.BoneManip //don't apply bone manips until after we've initialized the entity, otherwise it'll mess up the physbone offsets
 	data.BoneManip = nil
 	duplicator.DoGeneric(ent, data)
 
 	//in multiplayer, physobj scale is clamped between 0.20 and 50; don't let them bypass this by loading an unclamped dupe from singleplayer
 	if !game.SinglePlayer() then
 		for num, scalevec in pairs (data.PhysObjScales) do
-			data.PhysObjScales[num] = Vector( math.Clamp(scalevec.x, 0.20, 50), math.Clamp(scalevec.y, 0.20, 50), math.Clamp(scalevec.z, 0.20, 50) )
+			data.PhysObjScales[num] = Vector(math.Clamp(scalevec.x, 0.20, 50), math.Clamp(scalevec.y, 0.20, 50), math.Clamp(scalevec.z, 0.20, 50))
 		end
 	end
 	ent.PhysObjScales = data.PhysObjScales
@@ -975,14 +965,14 @@ duplicator.RegisterEntityClass( "prop_resizedragdoll_physparent", function( ply,
 	ent.RagdollBoundsMax = nil
 
 	ent.PostInitializeFunction = function()
-		if ( data.ColGroup ) then ent:SetCollisionGroup( data.ColGroup ) end
+		if (data.ColGroup) then ent:SetCollisionGroup(data.ColGroup) end
 		duplicator.DoGenericPhysics(ent, ply, data)
-		duplicator.DoBoneManipulator(ent, OldBoneManip)  //now it's safe to apply the bone manips
+		duplicator.DoBoneManipulator(ent, OldBoneManip) //now it's safe to apply the bone manips
 	end
-	ent:Spawn()  //initialize the entity and have it create its physobjs
+	ent:Spawn() //initialize the entity and have it create its physobjs
 
 	return ent
-end, "Data" )
+end, "Data")
 
 
 

@@ -3,10 +3,10 @@ TOOL.Name = "Ragdoll Resizer"
 TOOL.Command = nil
 TOOL.ConfigName = "" 
 
-TOOL.ClientConVar["drawhalo"] = "1"
-TOOL.ClientConVar["frozen"] = "0"
-TOOL.ClientConVar["debug"] = "0"  //console only, prints debug messages when a new entity is selected and the cpanel is populated
-TOOL.ClientConVar["pose"] = "1"
+TOOL.ClientConVar.drawhalo = "1"
+TOOL.ClientConVar.frozen = "0"
+TOOL.ClientConVar.debug = "0"  //console only, prints debug messages when a new entity is selected and the cpanel is populated
+TOOL.ClientConVar.pose = "1"
 
 TOOL.Information = {
 	{name = "right0", stage = 0, icon = "gui/rmb.png"},
@@ -72,9 +72,9 @@ function TOOL:LeftClick(trace)
 			local a = oldrag:GetManipulateBoneAngles(i)
 			local p = oldrag:GetManipulateBonePosition(i)
 			
-			if s != Vector( 1, 1, 1 ) then t["s"] = s end
-			if a != Angle( 0, 0, 0 ) then t["a"] = a end
-			if p != Vector( 0, 0, 0 ) then t["p"] = p end
+			if s != Vector(1,1,1) then t.s = s end
+			if a != Angle(0,0,0) then t.a = a end
+			if p != Vector(0,0,0) then t.p = p end
 		
 			if table.Count(t) > 0 then
 				oldragbonemanips[i] = t
@@ -120,7 +120,7 @@ function TOOL:LeftClick(trace)
 			local offset = oldrag:GetPos().z - lowestheight
 			for i, phys in pairs (newrag.PhysObjs) do
 				if IsValid(phys) then 
-					phys:SetPos( phys:GetPos() + Vector(0,0,offset) )
+					phys:SetPos(phys:GetPos() + Vector(0,0,offset))
 
 					//If we're matching the pose of the old ragdoll, then freeze all physobjs that were also frozen on the old ragdoll
 					local oldphys = oldrag:GetPhysicsObjectNum(i)
@@ -131,7 +131,7 @@ function TOOL:LeftClick(trace)
 					if spawnfrozen == 1 or oldphys then
 						phys:EnableMotion(false)
 						if ply then
-							ply:AddFrozenPhysicsObject(nil, phys)  //the entity argument needs to be nil, or else it'll make a ton of halo effects and lag up the game
+							ply:AddFrozenPhysicsObject(nil, phys) //the entity argument needs to be nil, or else it'll make a ton of halo effects and lag up the game
 						end
 					end
 				end
@@ -260,14 +260,14 @@ function TOOL:RightClick(trace)
 				MsgN("RAGDOLL RESIZER:")
 				MsgN("The ragdoll \"" .. trace.Entity:GetModel() .. "\" can't be resized because we can't get its model info for an unknown reason.")
 			end
-			net.Start( "ResizedRagdoll_FailedModelInfo_SendToCl" )
+			net.Start("ResizedRagdoll_FailedModelInfo_SendToCl")
 			net.Send(self:GetOwner())
 		end
 		return true
 	else
 		if IsValid(self:GetWeapon():GetNWEntity("RagdollResizer_CurEntity")) then
 			if SERVER then
-				self:GetWeapon():SetNWEntity("RagdollResizer_CurEntity",NULL)
+				self:GetWeapon():SetNWEntity("RagdollResizer_CurEntity", NULL)
 			end
 			return true
 		end
@@ -352,7 +352,7 @@ function TOOL:Think()
 					self.GhostRagdoll:SetMoveType(MOVETYPE_NONE)
 					self.GhostRagdoll:SetNotSolid(true)
 					self.GhostRagdoll:SetRenderMode(RENDERMODE_TRANSALPHA)
-					self.GhostRagdoll:SetColor(Color(255, 255, 255, 178)) //hl2 fastzombie model is invisible if alpha is any lower than 178, haven't run into this issue on any other models but better safe than sorry
+					self.GhostRagdoll:SetColor(Color(255,255,255,178)) //hl2 fastzombie model is invisible if alpha is any lower than 178, haven't run into this issue on any other models but better safe than sorry
 
 					//Copy bodygroups
 					if ent:GetNumBodyGroups() then
@@ -415,12 +415,12 @@ function TOOL:Think()
 									local parentboneid = self:GetBoneParent(i)
 									if parentboneid and parentboneid != -1 then
 										local parentmatr = self:GetBoneMatrix(parentboneid)
-										boneoffsets[i]["posoffset"], boneoffsets[i]["angoffset"] = WorldToLocal(ourmatr:GetTranslation(), ourmatr:GetAngles(), parentmatr:GetTranslation(), parentmatr:GetAngles())
+										boneoffsets[i].p, boneoffsets[i].a = WorldToLocal(ourmatr:GetTranslation(), ourmatr:GetAngles(), parentmatr:GetTranslation(), parentmatr:GetAngles())
 									else
-										boneoffsets[i]["posoffset"], boneoffsets[i]["angoffset"] = WorldToLocal(ourmatr:GetTranslation(), ourmatr:GetAngles(), self:GetPos(), self:GetAngles())
+										boneoffsets[i].p, boneoffsets[i].a = WorldToLocal(ourmatr:GetTranslation(), ourmatr:GetAngles(), self:GetPos(), self:GetAngles())
 									end
 								else
-									boneoffsets[i]["posoffset"], boneoffsets[i]["angoffset"] = Vector(0,0,0), Angle(0,0,0)
+									boneoffsets[i].p, boneoffsets[i].a = Vector(0,0,0), Angle(0,0,0)
 								end
 							end
 
@@ -437,13 +437,13 @@ function TOOL:Think()
 										tabprocessed[tab2.Key] = tab2.Value
 									end
 
-									solids[tabprocessed["index"]] = tabprocessed
+									solids[tabprocessed.index] = tabprocessed
 								end
 							end
 							self.PhysBoneParents = {}
 							for i = 0, table.Count(solids) - 1 do
-								if solids[i]["parent"] and solids[i]["parent"] != solids[i]["name"] then
-									self.PhysBoneParents[ self:LookupBone(solids[i]["name"]) ] = self:LookupBone( solids[i]["parent"] )
+								if solids[i].parent and solids[i].parent != solids[i].name then
+									self.PhysBoneParents[self:LookupBone(solids[i].name)] = self:LookupBone(solids[i].parent)
 								end
 							end
 
@@ -507,8 +507,8 @@ function TOOL:Think()
 								parentmatr:SetAngles(self:GetAngles())
 							end
 							if parentmatr then
-								parentmatr:Translate(self.BoneOffsets[i]["posoffset"])
-								parentmatr:Rotate(self.BoneOffsets[i]["angoffset"])
+								parentmatr:Translate(self.BoneOffsets[i].p)
+								parentmatr:Rotate(self.BoneOffsets[i].a)
 							end
 
 							if RagdollResizerScales[i] then
@@ -639,9 +639,7 @@ end
 
 function TOOL:GetStage()
 
-	local ent = self:GetWeapon():GetNWEntity("RagdollResizer_CurEntity")
-
-	if IsValid(ent) then
+	if IsValid(self:GetWeapon():GetNWEntity("RagdollResizer_CurEntity")) then
 		return 1
 	else
 		return 0
@@ -689,39 +687,44 @@ end
 
 
 
-function TOOL:DrawHUD()
+if CLIENT then
 
-	local ent = self.GhostRagdoll
+	local colorborder = Color(0,0,0,255)
+	local colortext = Color(255,255,255,255)
 
-	if IsValid(ent) then
-		//Draw a halo around the ghost ragdoll - render it through everything so that it doesn't get hidden inside the ragdoll (i.e. if we've set the scale really low)
-		if self:GetClientNumber( "drawhalo" ) == 1 then
-			local animcolor = 189 + math.cos( RealTime() * 4 ) * 17
+	function TOOL:DrawHUD()
 
-			halo.Add( {ent}, Color(255, 255, animcolor, 255), 2.3, 2.3, 1, true, true )
+		local ent = self.GhostRagdoll
 
-		end
-
-		//Draw the name and position of the selected bone
-		local bone = self:GetWeapon():GetNWInt("RagdollResizer_PhysObjIndex")
-		if bone and bone > -1 then
-			bone = ent:TranslatePhysBoneToBone(bone)
-			local matr = ent:GetBoneMatrix(bone)
-			local _pos = nil
-			if matr then 
-				_pos = matr:GetTranslation() 
-			else
-				_pos = ent:GetBonePosition(bone) 
+		if IsValid(ent) then
+			//Draw a halo around the ghost ragdoll - render it through everything so that it doesn't get hidden inside the ragdoll (i.e. if we've set the scale really low)
+			if self:GetClientNumber("drawhalo") == 1 then
+				local animcolor = 189 + math.cos(RealTime() * 4) * 17
+				halo.Add({ent}, Color(255, 255, animcolor, 255), 2.3, 2.3, 1, true, true)
 			end
 
-			if !_pos then return end
-			local _pos = _pos:ToScreen()
-			local textpos = {x = _pos.x+5,y = _pos.y-5}
+			//Draw the name and position of the selected bone
+			local bone = self:GetWeapon():GetNWInt("RagdollResizer_PhysObjIndex")
+			if bone and bone > -1 then
+				bone = ent:TranslatePhysBoneToBone(bone)
+				local matr = ent:GetBoneMatrix(bone)
+				local _pos = nil
+				if matr then 
+					_pos = matr:GetTranslation() 
+				else
+					_pos = ent:GetBonePosition(bone) 
+				end
 
-			draw.RoundedBox(0,_pos.x - 2,_pos.y - 2,4,4,Color(0,0,0,255))
-			draw.RoundedBox(0,_pos.x - 1,_pos.y - 1,2,2,Color(255,255,255,255))
-			draw.SimpleTextOutlined(ent:GetBoneName(bone),"Default",textpos.x,textpos.y,Color(255,255,255,255),TEXT_ALIGN_LEFT,TEXT_ALIGN_BOTTOM,1,Color(0,0,0,255))
+				if !_pos then return end
+				local _pos = _pos:ToScreen()
+				local textpos = {x = _pos.x+5,y = _pos.y-5}
+
+				draw.RoundedBox(0,_pos.x - 2,_pos.y - 2,4,4,colorborder)
+				draw.RoundedBox(0,_pos.x - 1,_pos.y - 1,2,2,colortext)
+				draw.SimpleTextOutlined(ent:GetBoneName(bone),"Default",textpos.x,textpos.y,colortext,TEXT_ALIGN_LEFT,TEXT_ALIGN_BOTTOM,1,Color(0,0,0,255))
+			end
 		end
+
 	end
 
 end
@@ -799,7 +802,7 @@ else
 			end
 
 			//Then, send it to the server to update the serverside RagdollResizerScales table
-			net.Start( "ResizedRagdoll_UpdateToolScale_SendToSv" )
+			net.Start("ResizedRagdoll_UpdateToolScale_SendToSv")
 				net.WriteInt(-10, 11)
 				net.WriteEntity(panel.ToolgunObj)
 
@@ -819,7 +822,7 @@ else
 			end
 
 			//Then, send it to the server to update the serverside RagdollResizerScales table
-			net.Start( "ResizedRagdoll_UpdateToolScale_SendToSv" )
+			net.Start("ResizedRagdoll_UpdateToolScale_SendToSv")
 				net.WriteInt(physobjid, 11)
 				net.WriteEntity(panel.ToolgunObj)
 
@@ -838,7 +841,7 @@ else
 		local panel = controlpanel.Get("ragdollresizerphys")
 		if !panel or !panel.ToolgunObj then return end
 
-		net.Start( "ResizedRagdoll_UpdateToolStretch_SendToSv" )
+		net.Start("ResizedRagdoll_UpdateToolStretch_SendToSv")
 			net.WriteBool(stretch)
 			net.WriteEntity(panel.ToolgunObj)
 		net.SendToServer()
@@ -865,10 +868,10 @@ else
 				val = tonumber(val)
 			end
 			//the rest of this is the default slider setvalue function
-			if ( val == nil ) then return end
-			if ( self:GetValue() == val ) then return end
-			self.Scratch:SetValue( val )
-			self:ValueChanged( self:GetValue() )
+			if (val == nil) then return end
+			if (self:GetValue() == val) then return end
+			self.Scratch:SetValue(val)
+			self:ValueChanged(self:GetValue())
 		end
 		panel.slider_all.OnValueChanged = function()
 			if panel.UpdatingSliders then return end
@@ -1017,10 +1020,10 @@ else
 
 					//taking the focus off of the text areas isn't enough, we also need to update their text manually because vgui.GetKeyboardFocus()
 					//erroneously tells them that they've still got focus and shouldn't be updating themselves
-					panel.slider_x.TextArea:SetText( panel.slider_x.Scratch:GetTextValue() )
-					panel.slider_y.TextArea:SetText( panel.slider_y.Scratch:GetTextValue() )
-					panel.slider_z.TextArea:SetText( panel.slider_z.Scratch:GetTextValue() )
-					panel.slider_xyz.TextArea:SetText( panel.slider_xyz.Scratch:GetTextValue() )
+					panel.slider_x.TextArea:SetText(panel.slider_x.Scratch:GetTextValue())
+					panel.slider_y.TextArea:SetText(panel.slider_y.Scratch:GetTextValue())
+					panel.slider_z.TextArea:SetText(panel.slider_z.Scratch:GetTextValue())
+					panel.slider_xyz.TextArea:SetText(panel.slider_xyz.Scratch:GetTextValue())
 				end
 			end
 			UpdateResizedRagdollScale(objid)  //Make sure the NWvars update even if none of the sliders were changed
@@ -1038,10 +1041,10 @@ else
 				val = tonumber(val)
 			end
 			//the rest of this is the default slider setvalue function
-			if ( val == nil ) then return end
-			if ( self:GetValue() == val ) then return end
-			self.Scratch:SetValue( val )
-			self:ValueChanged( self:GetValue() )
+			if (val == nil) then return end
+			if (self:GetValue() == val) then return end
+			self.Scratch:SetValue(val)
+			self:ValueChanged(self:GetValue())
 		end
 		panel.slider_x.OnValueChanged = function() UpdateResizedRagdollScale(panel.physobjlist.selectedobj) end
 		panel.slider_x:SetHeight(9)
@@ -1056,10 +1059,10 @@ else
 				val = tonumber(val)
 			end
 			//the rest of this is the default slider setvalue function
-			if ( val == nil ) then return end
-			if ( self:GetValue() == val ) then return end
-			self.Scratch:SetValue( val )
-			self:ValueChanged( self:GetValue() )
+			if (val == nil) then return end
+			if (self:GetValue() == val) then return end
+			self.Scratch:SetValue(val)
+			self:ValueChanged(self:GetValue())
 		end
 		panel.slider_y.OnValueChanged = function() UpdateResizedRagdollScale(panel.physobjlist.selectedobj) end
 		panel.slider_y:SetHeight(9)
@@ -1074,10 +1077,10 @@ else
 				val = tonumber(val)
 			end
 			//the rest of this is the default slider setvalue function
-			if ( val == nil ) then return end
-			if ( self:GetValue() == val ) then return end
-			self.Scratch:SetValue( val )
-			self:ValueChanged( self:GetValue() )
+			if (val == nil) then return end
+			if (self:GetValue() == val) then return end
+			self.Scratch:SetValue(val)
+			self:ValueChanged(self:GetValue())
 		end
 		panel.slider_z.OnValueChanged = function() UpdateResizedRagdollScale(panel.physobjlist.selectedobj) end
 		panel.slider_z:SetHeight(9)
@@ -1092,10 +1095,10 @@ else
 				val = tonumber(val)
 			end
 			//the rest of this is the default slider setvalue function
-			if ( val == nil ) then return end
-			if ( self:GetValue() == val ) then return end
-			self.Scratch:SetValue( val )
-			self:ValueChanged( self:GetValue() )
+			if (val == nil) then return end
+			if (self:GetValue() == val) then return end
+			self.Scratch:SetValue(val)
+			self:ValueChanged(self:GetValue())
 		end
 		panel.slider_xyz.OnValueChanged = function()
 			if panel.UpdatingSliders then return end
@@ -1151,10 +1154,10 @@ else
 			//val = math.Clamp(tonumber(val) or 0, self:GetMin(), self:GetMax())
 			val = tonumber(val)  //don't clamp the value, let players type in whatever they want 
 			//the rest of this is the default slider setvalue function
-			if ( val == nil ) then return end
-			if ( self:GetValue() == val ) then return end
-			self.Scratch:SetValue( val )
-			self:ValueChanged( self:GetValue() )
+			if (val == nil) then return end
+			if (self:GetValue() == val) then return end
+			self.Scratch:SetValue(val)
+			self:ValueChanged(self:GetValue())
 		end
 		panel.eyeslider.OnValueChanged = function()
 			local val = panel.eyeslider:GetValue()

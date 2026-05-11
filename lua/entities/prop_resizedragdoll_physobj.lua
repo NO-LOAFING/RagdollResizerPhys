@@ -54,7 +54,7 @@ if CLIENT then
 	end
 
 	//We don't want to draw the physobj ents, but we can't use SetNoDraw or it'll cause visual jittering when moving the ragdoll
-	//debug: comment these out to make the SetColor bit below in PhysicsUpdate work
+	//(debug: comment these out to make the SetColor bit below in PhysicsUpdate work)
 	function ENT:Draw()
 	end
 	function ENT:DrawTranslucent()
@@ -69,7 +69,7 @@ if SERVER then
 
 	function ENT:PhysicsUpdate(phys)
 
-		//debug: show where the physobj is and if it's held by the physgun
+		//(debug: show where the physobj is and if it's held by the physgun)
 		--[[if phys:IsValid() and phys:HasGameFlag(FVPHYSICS_PLAYER_HELD) then
 			self:SetColor(Color(255,0,0,255))
 		else
@@ -122,5 +122,5 @@ end
 
 
 //Don't duplicate this, the parent entity recreates the physobj ents from scratch when it spawns
-duplicator.RegisterEntityClass( "prop_resizedragdoll_physobj", function( ply, data )
-end, "Data" )
+duplicator.RegisterEntityClass("prop_resizedragdoll_physobj", function(ply, data)
+end, "Data")

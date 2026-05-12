@@ -450,7 +450,8 @@ if CLIENT then
 		if !self.PhysBones then return end
 
 		//This function is expensive, so make sure we aren't running it more often than we need to
-		if self.LastBuildBonePositionsTime == CurTime() then
+		local time = CurTime()
+		if self.LastBuildBonePositionsTime == time then
 			for i = 0, bonecount - 1 do
 				if self.SavedBoneMatrices[i] and self:GetBoneName(i) != "__INVALIDBONE__" then
 					self:SetBoneMatrix(i, self.SavedBoneMatrices[i])
@@ -458,9 +459,8 @@ if CLIENT then
 			end
 			return
 		else
-			self.LastBuildBonePositionsTime = CurTime()
+			self.LastBuildBonePositionsTime = time
 		end
-
 
 		//Create a table of bone offsets for bones to use if they're not following a physobj
 		if !self.BoneOffsets then
@@ -526,36 +526,17 @@ if CLIENT then
 			self.csmodel = nil
 		end
 
-
 		for i = 0, bonecount - 1 do
-
 			local matr = nil
-			//local dostretch = true //test
-
-			local parentmatr = nil
-			local parentboneid = self:GetBoneParent(i)
-			if parentboneid and parentboneid != -1 then
-				parentmatr = self:GetBoneMatrix(parentboneid)
-			else
-				parentmatr = Matrix()
-				parentmatr:SetTranslation(self:GetPos())
-				parentmatr:SetAngles(self:GetAngles())
-			end
-			if parentmatr then
-				parentmatr:Translate(self.BoneOffsets[i].p)
-				parentmatr:Translate(self:GetManipulateBonePosition(i))
-				parentmatr:Rotate(self.BoneOffsets[i].a)
-				parentmatr:Rotate(self:GetManipulateBoneAngles(i))
-			end
 
 			if self.PhysBones[i] and IsValid(self.PhysBones[i].entity) then
 				//Follow the physics object entity, but use the position offset from our parent physobj if we have one so that the ragdoll never looks "stretched"
 				matr = Matrix()
 				local physparentmatr = nil
-				if self.PhysBoneOffsets[i] then
+				if self.PhysBoneOffsets[i] and !self:GetStretch() then
 					physparentmatr = self:GetBoneMatrix(self.PhysBones[i].parentid)
 				end
-				if physparentmatr and !self:GetStretch() then
+				if physparentmatr then
 					physparentmatr:Translate(self.PhysBoneOffsets[i])
 					matr:SetTranslation(physparentmatr:GetTranslation())
 				else
@@ -565,9 +546,21 @@ if CLIENT then
 				matr:Scale(self.PhysBones[i].scalevec)
 			else
 				//Follow our parent bone
-				if parentmatr then matr = parentmatr end
+				local parentboneid = self:GetBoneParent(i)
+				if parentboneid and parentboneid != -1 then
+					matr = self:GetBoneMatrix(parentboneid)
+				else
+					matr = Matrix()
+					matr:SetTranslation(self:GetPos())
+					matr:SetAngles(self:GetAngles())
+				end
+				if matr then
+					matr:Translate(self.BoneOffsets[i].p)
+					matr:Translate(self:GetManipulateBonePosition(i))
+					matr:Rotate(self.BoneOffsets[i].a)
+					matr:Rotate(self:GetManipulateBoneAngles(i))
+				end
 			end
-
 
 			if matr then
 				if self:GetBoneName(i) != "__INVALIDBONE__" then
@@ -579,8 +572,10 @@ if CLIENT then
 				//We can detect jigglebones and do things to them specifically with self:BoneHasFlag(i,BONE_ALWAYS_PROCEDURAL), but there doesn't seem to be an easy way
 				//to keep everything working (bone parenting, etc.) while still allowing the bones to jiggle.
 			end
-
 		end
+
+		//attempted to make an "optimized" version of this using CopyBoneMatrix instead of SetBoneMatrix, and 
+		//reusing matrs instead of creating new ones each frame, but it consistently ran *slower*? what?
 
 	end
 
@@ -799,65 +794,20 @@ function ENT:GenerateRagdollBounds()
 
 	local pos = self:GetPos()
 	local mins, maxs = pos, pos
+	local function AddPhysBounds(ent)
+		if !IsValid(ent) then return end
+		local pmins, pmaxs = ent:WorldSpaceAABB()
+		mins = Vector(math.min(pmins.x, mins.x), math.min(pmins.y, mins.y), math.min(pmins.z, mins.z))
+		maxs = Vector(math.max(pmaxs.x, maxs.x), math.max(pmaxs.y, maxs.y), math.max(pmaxs.z, maxs.z))
+	end
+
 	if !self.PhysObjEnts and self.PhysBones then  //the table structure's a bit different on the server and on the client, so just use whichever one we've got
 		for _, v in pairs (self.PhysBones) do
-			if IsValid(v.entity) and IsValid(v.entity:GetPhysicsObject()) then
-				local phys = v.entity:GetPhysicsObject()
-
-				local physpos, physang = phys:GetPos(), phys:GetAngles()
-				local pmins, pmaxs = phys:GetAABB()
-				local vects = {
-					pmins, Vector(pmaxs.x, pmins.y, pmins.z),
-					Vector(pmins.x, pmaxs.y, pmins.z), Vector(pmaxs.x, pmaxs.y, pmins.z),
-					Vector(pmins.x, pmins.y, pmaxs.z), Vector(pmaxs.x, pmins.y, pmaxs.z),
-					Vector(pmins.x, pmaxs.y, pmaxs.z), pmaxs,
-				}
-				for i = 1, #vects do
-					local wspos = LocalToWorld(vects[i], Angle(0,0,0), physpos, physang)
-					vects[i] = wspos
-				end
-				mins = Vector( math.min(vects[1].x, vects[2].x, vects[3].x, vects[4].x, 
-						vects[5].x, vects[6].x, vects[7].x, vects[8].x, mins.x),
-						math.min(vects[1].y, vects[2].y, vects[3].y, vects[4].y, 
-						vects[5].y, vects[6].y, vects[7].y, vects[8].y, mins.y),
-						math.min(vects[1].z, vects[2].z, vects[3].z, vects[4].z, 
-						vects[5].z, vects[6].z, vects[7].z, vects[8].z, mins.z) )
-				maxs = Vector( math.max(vects[1].x, vects[2].x, vects[3].x, vects[4].x, 
-						vects[5].x, vects[6].x, vects[7].x, vects[8].x, maxs.x),
-						math.max(vects[1].y, vects[2].y, vects[3].y, vects[4].y, 
-						vects[5].y, vects[6].y, vects[7].y, vects[8].y, maxs.y),
-						math.max(vects[1].z, vects[2].z, vects[3].z, vects[4].z, 
-						vects[5].z, vects[6].z, vects[7].z, vects[8].z, maxs.z) )
-			end
+			AddPhysBounds(v.entity)
 		end
 	else
-		for _, phys in pairs (self.PhysObjs) do
-			if IsValid(phys) then
-				local physpos, physang = phys:GetPos(), phys:GetAngles()
-				local pmins, pmaxs = phys:GetAABB()
-				local vects = {
-					pmins, Vector(pmaxs.x, pmins.y, pmins.z),
-					Vector(pmins.x, pmaxs.y, pmins.z), Vector(pmaxs.x, pmaxs.y, pmins.z),
-					Vector(pmins.x, pmins.y, pmaxs.z), Vector(pmaxs.x, pmins.y, pmaxs.z),
-					Vector(pmins.x, pmaxs.y, pmaxs.z), pmaxs,
-				}
-				for i = 1, #vects do
-					local wspos = LocalToWorld(vects[i], Angle(0,0,0), physpos, physang)
-					vects[i] = wspos
-				end
-				mins = Vector( math.min(vects[1].x, vects[2].x, vects[3].x, vects[4].x, 
-						vects[5].x, vects[6].x, vects[7].x, vects[8].x, mins.x),
-						math.min(vects[1].y, vects[2].y, vects[3].y, vects[4].y, 
-						vects[5].y, vects[6].y, vects[7].y, vects[8].y, mins.y),
-						math.min(vects[1].z, vects[2].z, vects[3].z, vects[4].z, 
-						vects[5].z, vects[6].z, vects[7].z, vects[8].z, mins.z) )
-				maxs = Vector( math.max(vects[1].x, vects[2].x, vects[3].x, vects[4].x, 
-						vects[5].x, vects[6].x, vects[7].x, vects[8].x, maxs.x),
-						math.max(vects[1].y, vects[2].y, vects[3].y, vects[4].y, 
-						vects[5].y, vects[6].y, vects[7].y, vects[8].y, maxs.y),
-						math.max(vects[1].z, vects[2].z, vects[3].z, vects[4].z, 
-						vects[5].z, vects[6].z, vects[7].z, vects[8].z, maxs.z) )
-			end
+		for _, ent in pairs (self.PhysObjEnts) do
+			AddPhysBounds(ent)
 		end
 	end
 

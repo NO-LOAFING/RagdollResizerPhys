@@ -297,7 +297,7 @@ function ENT:Initialize()
 		if self.ModelInfo.Constraints then
 			//self.ResizedRagdollConstraints = {}
 			self.ConstraintSystem = ents.Create("phys_constraintsystem")
-			//self.ConstraintSystem:SetKeyValue("additionaliterations", GetConVarNumber("gmod_physiterations")) //disabled because this appears to make ragdoll range of motion more strict (see lamarr.mdl legs with and without this setting); this matches how default ragdolls do this internally (https://github.com/ValveSoftware/source-sdk-2013/blob/master/src/game/shared/ragdoll_shared.cpp#L275-L277, which sets default of 0 https://github.com/ValveSoftware/source-sdk-2013/blob/master/src/public/vphysics/constraints.h#L18-L30)
+			self.ConstraintSystem:SetKeyValue("additionaliterations", GetConVarNumber("gmod_physiterations"))
 			self.ConstraintSystem:SetName("constraintsystem_" .. self:EntIndex())
 			self.ConstraintSystem:Spawn()
 			self.ConstraintSystem:Activate()
